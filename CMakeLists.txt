@@ -38,23 +38,56 @@ endif()
 # CPack configuration
 include(InstallRequiredSystemLibraries)
 
-set(CPACK_PACKAGE_NAME "lab06")
+set(CPACK_PACKAGE_NAME "solver")
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Lab06 Project")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Solver Application")
 set(CPACK_PACKAGE_VENDOR "Your Name")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "lab06")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "solver")
 
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_CURRENT_SOURCE_DIR}/LICENSE)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_CURRENT_SOURCE_DIR}/README.md)
 
-# Set the package type
-set(CPACK_GENERATOR "TGZ")
+# DEB package configuration
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Your Name")
+set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libc6")
+
+# RPM package configuration
+set(CPACK_RPM_PACKAGE_RELEASE "1")
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_GROUP "Development/Tools")
+
+# Windows MSI configuration
+set(CPACK_WIX_UPGRADE_GUID "12345678-1234-1234-1234-123456789012")
+set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/path/to/icon.ico")
+set(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/path/to/banner.png")
+set(CPACK_WIX_UI_DIALOG "${CMAKE_SOURCE_DIR}/path/to/dialog.png")
+
+# macOS DMG configuration
+set(CPACK_DMG_VOLUME_NAME "Solver")
+set(CPACK_DMG_FORMAT "UDZO")
+set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "${CMAKE_SOURCE_DIR}/path/to/setup.scpt")
+
+# Set the package generators based on platform
+if(WIN32)
+  set(CPACK_GENERATOR "WIX")
+elseif(APPLE)
+  set(CPACK_GENERATOR "DragNDrop")
+elseif(UNIX)
+  if(EXISTS "/etc/debian_version")
+    set(CPACK_GENERATOR "DEB")
+  elseif(EXISTS "/etc/redhat-release")
+    set(CPACK_GENERATOR "RPM")
+  else()
+    set(CPACK_GENERATOR "TGZ")
+  endif()
+endif()
 
 # Set the package file name
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}")
 
 # Set the package source directory
-set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_GENERATOR "TGZ;ZIP")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-src")
 
 include(CPack)
