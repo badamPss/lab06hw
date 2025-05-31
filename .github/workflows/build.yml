@@ -1,82 +1,108 @@
-name: CMake Build
+name: Build and Package
 
 on:
   push:
-    branches:
-      - master
-    tags:
-      - 'v*'
+    branches: [ master ]
+    tags: [ 'v*' ]
   pull_request:
-    branches:
-      - master
+    branches: [ master ]
 
 jobs:
-  build:
+  linux-build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake g++ libgtest-dev rpm dpkg-dev
+        
+    - name: Build GTest
+      run: |
+        cd /usr/src/googletest/googletest || cd /usr/src/gtest
+        sudo cmake CMakeLists.txt
+        sudo make
+        sudo cp lib/*.a /usr/lib/
+        
+    - name: Configure CMake
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      
+    - name: Build
+      run: cmake --build build --config Release --parallel 2
+      
+    - name: Run tests
+      working-directory: ${{github.workspace}}/build
+      run: ctest --output-on-failure
+      
+    - name: Create packages
+      working-directory: ${{github.workspace}}/build
+      run: |
+        cpack -G DEB && mv *.deb solver.deb
+        cpack -G RPM && mv *.rpm solver.rpm
+        ls -la *.deb *.rpm || echo "No packages created"
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-packages
+        path: |
+          build/solver.deb
+          build/solver.rpm
+        if-no-files-found: error
+        retention-days: 5
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake
-          sudo apt-get install -y devscripts debhelper rpm
+  source-archives:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Prepare source archives
+      run: |
+        git archive --format=zip -o source.zip HEAD
+        git archive --format=tar.gz -o source.tar.gz HEAD
+    
+    - name: Upload source archives
+      uses: actions/upload-artifact@v4
+      with:
+        name: source-archives
+        path: |
+          source.zip
+          source.tar.gz
+        retention-days: 5
 
-      - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v1
-
-      - name: Create build directory
-        run: cmake -H. -B_build -DCMAKE_INSTALL_PREFIX=_install
-
-      - name: Build
-        run: cmake --build _build
-
-      - name: Install
-        run: cmake --build _build --target install
-
-      - name: Run tests
-        run: ctest --test-dir _build --output-on-failure
-
-      - name: Create packages
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          cd _build
-          cpack -G DEB
-          cpack -G RPM
-          cpack -G TGZ
-
-      - name: Create source archive
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          tar -czf solver-${VERSION}.tar.gz .
-          zip -r solver-${VERSION}.zip .
-
-      - name: Upload artifacts
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages-ubuntu
-          path: |
-            _build/*.deb
-            _build/*.rpm
-            _build/*.tar.gz
-            solver-*.tar.gz
-            solver-*.zip
-
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            _build/*.deb
-            _build/*.rpm
-            _build/*.tar.gz
-            solver-*.tar.gz
-            solver-*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  create-release:
+    needs: [linux-build, source-archives]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download Linux artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: linux-packages
+        path: artifacts/linux
+    
+    - name: Download source archives
+      uses: actions/download-artifact@v4
+      with:
+        name: source-archives
+        path: artifacts/source
+    
+    - name: Verify artifacts
+      run: |
+        echo "Linux artifacts:"
+        ls -la artifacts/linux || echo "No Linux artifacts"
+        echo "Source archives:"
+        ls -la artifacts/source || echo "No source archives"
+    
+    - name: Create Release
+      if: success()
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        files: |
+          artifacts/linux/*
+          artifacts/source/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
