@@ -10,8 +10,9 @@ add_subdirectory(hello_world_application)
 add_subdirectory(solver_lib)
 add_subdirectory(solver_application)
 
-install(TARGETS hello_world solver DESTINATION bin)
-install(TARGETS formatter formatter_ex solver_lib DESTINATION lib)
+install(TARGETS solver
+        RUNTIME DESTINATION bin
+        COMPONENT solver)
 
 if(BUILD_TESTS)
   enable_testing()
@@ -59,14 +60,16 @@ set(CPACK_RPM_PACKAGE_GROUP "Development/Tools")
 
 # Windows MSI configuration
 set(CPACK_WIX_UPGRADE_GUID "12345678-1234-1234-1234-123456789012")
-set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/path/to/icon.ico")
-set(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/path/to/banner.png")
-set(CPACK_WIX_UI_DIALOG "${CMAKE_SOURCE_DIR}/path/to/dialog.png")
+set(CPACK_WIX_PRODUCT_NAME "Solver")
+set(CPACK_WIX_PRODUCT_VERSION "${CPACK_PACKAGE_VERSION}")
+set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/preview.png")
+set(CPACK_WIX_UI_BANNER "${CMAKE_CURRENT_SOURCE_DIR}/preview.png")
+set(CPACK_WIX_UI_DIALOG "${CMAKE_CURRENT_SOURCE_DIR}/preview.png")
 
 # macOS DMG configuration
 set(CPACK_DMG_VOLUME_NAME "Solver")
 set(CPACK_DMG_FORMAT "UDZO")
-set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "${CMAKE_SOURCE_DIR}/path/to/setup.scpt")
+set(CPACK_DMG_BACKGROUND_IMAGE "${CMAKE_CURRENT_SOURCE_DIR}/preview.png")
 
 # Set the package generators based on platform
 if(WIN32)
